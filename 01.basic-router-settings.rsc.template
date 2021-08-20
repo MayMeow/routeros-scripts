@@ -1,5 +1,5 @@
 #!rsc by RouterOS
-# RouterOS script 1.basic-router-settings.rsc
+# RouterOS script 1.basic-router-settings.rsc.template
 # Copyright (c) 2021 May Meow <may@maymeow.moe>
 #
 # ! This is template replace following items before use
