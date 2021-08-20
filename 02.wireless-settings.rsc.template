@@ -1,0 +1,31 @@
+#!rsc by RouterOS
+# WIP - work in progress
+#
+# RouterOS script 02.wireless-settings.rsc.template
+# Copyright (c) 2021 May Meow <may@maymeow.moe>
+#
+# ! This is template replace following items before use
+#
+
+:local PSK "%PSK%"
+:local COUNTRY "%COUNTRY%"
+:local SSID "%SSID&"
+:local BRIDGE "%BRIDGE%"
+
+# Check if global variable $BRIDGENAME exists
+:if (:typeof[$BRIDGENAME] != "nil") do={
+    $BRIDGE = $BRIDGENAME
+}
+
+# Configure WPA2 authentication
+/interface wireless security-profiles
+set [ find default=yes ] supplicant-identity=MikroTik
+add authentication-types=wpa2-psk eap-methods="" management-protection=allowed mode=dynamic-keys name=security.wpa2 supplicant-identity="" wpa2-pre-shared-key="$PSK"
+
+# Configure interface
+/interface wireless
+set [ find default-name=wlan1 ] band=2ghz-b/g/n channel-width=20/40mhz-Ce country="$COUNTRY" disabled=no distance=indoors frequency=auto frequency-mode=regulatory-domain mode=ap-bridge name="wlan.$SSID" security-profile=security.wpa2 ssid="$SSID" wps-mode=disabled
+
+# Add Interface to bridge
+/interface bridge port
+add bridge="$BRIDGE" interface="wlan.$SSID"
