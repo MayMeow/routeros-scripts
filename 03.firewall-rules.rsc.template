@@ -1,0 +1,66 @@
+#!rsc by RouterOS
+# WIP - work in progress
+#
+# RouterOS script 03.firewall-rules.rsc.template
+# Copyright (c) 2021 May Meow <may@maymeow.moe>
+#
+# ! This is template replace following items before use
+#
+
+# Address list for lan networks
+# Add more renges if you need
+/ip firewall address-list
+add address=192.168.1.0/24 list=LanNetworks
+add address=192.168.1.0/24 list=ConnectedNetworks
+
+# Adress lists for "Not public" network ranges
+/ip firewall address-list
+add address=10.0.0.0/8 comment=RFC6890 list=NotPublic
+add address=0.0.0.0/8 comment=RFC6890 list=NotPublic
+add address=100.64.0.0/10 comment=RFC6890 list=NotPublic
+add address=127.0.0.0/8 comment=RFC6890 list=NotPublic
+add address=169.254.0.0/16 comment=RFC6890 list=NotPublic
+add address=172.16.0.0/12 comment=RFC6890 list=NotPublic
+add address=192.0.0.0/24 comment=RFC6890 list=NotPublic
+add address=192.0.2.0/24 comment=RFC6890 list=NotPublic
+add address=192.168.0.0/16 comment=RFC6890 list=NotPublic
+add address=192.88.99.0/24 comment=RFC3068 list=NotPublic
+add address=198.18.0.0/15 comment=RFC6890 list=NotPublic
+add address=198.51.100.0/24 comment=RFC6890 list=NotPublic
+add address=203.0.113.0/24 comment=RFC6890 list=NotPublic
+add address=224.0.0.0/4 comment=RFC4601 list=NotPublic
+add address=240.0.0.0/4 comment=RFC6890 list=NotPublic
+
+# Input chain
+/ip firewall filter
+add action=fasttrack-connection chain=forward connection-state=established,related disabled=yes
+add action=accept chain=input comment="Accept established and related packets" connection-state=established,related
+add action=accept chain=input comment="Accept all connections from local network" in-interface=br1
+add action=accept chain=input comment="Allow winbox for Admins" dst-port=8291 in-interface=eth1.internet protocol=tcp
+add action=accept chain=input comment="Allow OpenVPN port" dst-port=1194 in-interface=eth1.internet protocol=tcp
+add action=accept chain=input comment="UDP ports for VPN" dst-port=1701,4500,500 in-interface=eth1.internet protocol=udp
+add action=accept chain=input comment="UDP ports for VPN" in-interface=eth1.internet protocol=ipsec-esp
+add action=accept chain=input comment="Allow SSH For Admins" dst-port=32265 in-interface=eth1.internet protocol=tcp src-address-list=MngAdmins
+add action=accept chain=input comment="Allow winbox web for Admins" dst-port=44080 in-interface=eth1.internet protocol=tcp src-address-list=MngAdmins
+add action=drop chain=input comment="Drop invalid packets" connection-state=invalid
+add action=drop chain=input comment="Drop New Connection from internet" connection-state=new in-interface=eth1.internet
+add action=drop chain=input comment="Drop all packets which are not destined to routes IP address" dst-address-type=!local
+add action=drop chain=input comment="Drop all packets which does not have unicast source IP address" src-address-type=!unicast
+add action=drop chain=input comment="Drop all packets from public internet which should not exist in public network" in-interface=eth1.internet src-address-list=NotPublic
+add action=drop chain=input comment="Drop all packets from public internet to DNS server on UDP" dst-port=53 protocol=udp
+add action=drop chain=input comment="Drop all packets from public internet to DNS server on TCP" dst-port=53 protocol=tcp
+
+# Forward chain
+/ip firewall filter
+add action=accept chain=forward comment="Accept established and related packets" connection-state=established,related
+add action=accept chain=forward comment="Allow all packets from lan to vpn networks" in-interface=br1 dst-address-list=VpnNetworks
+add action=drop chain=forward comment="Drop invalid packets" connection-state=invalid
+add action=drop chain=forward comment="Drop new connections from internet" connection-state=new in-interface=eth1.internet
+add action=drop chain=forward comment="Drop all packets from public internet which should not exist in public network" in-interface=eth1.internet src-address-list=NotPublic
+add action=drop chain=forward comment="Drop all packets from local network to internet which should not exist in public network" dst-address-list=NotPublic in-interface=br1
+add action=drop chain=forward comment="Drop all packets in local network which does not have local network address" in-interface=br1 src-address-list=!LanNetworks
+add action=drop chain=forward disabled=yes
+
+# Add Masquerade
+/ip firewall nat
+add action=masquerade chain=srcnat comment="Masquerade" out-interface=eth1.internet to-addresses=0.0.0.0
